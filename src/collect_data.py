@@ -6,14 +6,29 @@ import os
 from datetime import datetime
 from tqdm import tqdm
 from dotenv import load_dotenv
+import json
 
 def fetch_all_data(base_url, params, max_retries=3, delay=1):
     all_items = []
     
     try:
         response = requests.get(base_url, params=params)
-        response.raise_for_status()
-        data = response.json()
+        print(f"Status Code: {response.status_code}")
+        print(f"Response Headers: {response.headers}")
+        print(f"Raw Response Content: {response.text[:1000]}")
+        
+        if response.status_code != 200:
+            raise Exception(f"API 응답 실패: Status Code {response.status_code}")
+            
+        if not response.text:
+            raise Exception("API 응답이 비어있습니다")
+            
+        try:
+            data = response.json()
+        except json.JSONDecodeError as e:
+            print(f"JSON 파싱 에러: {str(e)}")
+            print(f"응답 내용: {response.text}")
+            raise
         
         if data['header']['resultCode'] != "00":
             raise Exception(f"API 응답 에러: {data['header']['resultMsg']}")
@@ -62,23 +77,26 @@ def fetch_all_data(base_url, params, max_retries=3, delay=1):
     return all_items
 
 def main():
-    # .env 파일 로드
     load_dotenv()
     
     base_url = "http://apis.data.go.kr/1471000/HtfsInfoService03/getHtfsItem01"
-    
-    # API 키를 .env 파일에서 가져오기
-    api_key = os.getenv('API_KEY')
+    api_key = str(os.getenv('API_KEY')).strip()
     
     if not api_key:
         raise ValueError("API_KEY가 .env 파일에 설정되지 않았습니다.")
     
+    masked_key = api_key[:4] + "*" * (len(api_key)-8) + api_key[-4:]
+    print(f"Using API key: {masked_key}")
+    
     params = {
-        'ServiceKey': api_key,
+        'serviceKey': api_key,
         'pageNo': '1',
         'numOfRows': '100',
         'type': 'json'
     }
+    
+    full_url = requests.Request('GET', base_url, params=params).prepare().url
+    print(f"Full URL: {full_url}")
     
     print("데이터 수집을 시작합니다...")
     
@@ -106,7 +124,6 @@ def main():
             "BASE_STANDARD"
         ]
         
-        # 필드가 모두 있는지 확인하고, 없는 필드는 빈 값으로 채움
         for field in fields:
             if field not in df.columns:
                 df[field] = ""
