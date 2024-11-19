@@ -81,13 +81,39 @@ def clean_text(text):
     if not isinstance(text, str):
         return text
     
-    # 줄바꿈 문자를 공백으로 변경
+    # 특수 문자 변환 매핑
+    special_chars = {
+        'β': 'beta',
+        'α': 'alpha',
+        'γ': 'gamma',
+        'δ': 'delta',
+        'μ': 'mu',
+        'ω': 'omega',
+        '℃': 'C',
+        '°': ' degrees ',
+        '±': 'plus-minus',
+        '×': 'x',
+        '→': '->',
+        '≤': '<=',
+        '≥': '>='
+    }
+    
+    # 특수 문자 변환
+    for char, replacement in special_chars.items():
+        text = text.replace(char, replacement)
+    
+    # 제어 문자 제거
+    text = ''.join(char for char in text if ord(char) >= 32 or char in '\n\r\t')
+    
+    # 줄바꿈, 탭을 공백으로 변환
     text = text.replace('\n', ' ')
-    # 탭 문자를 공백으로 변경
+    text = text.replace('\r', ' ')
     text = text.replace('\t', ' ')
-    # 연속된 공백을 하나의 공백으로 변경
+    
+    # 연속된 공백을 하나로 통일
     text = ' '.join(text.split())
-    # 텍스트 길이 제한 (예: 32,767자)
+    
+    # Excel 셀 제한
     text = text[:32000] if len(text) > 32000 else text
     
     return text
