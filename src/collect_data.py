@@ -76,6 +76,22 @@ def fetch_all_data(base_url, params, max_retries=3, delay=1):
     
     return all_items
 
+def clean_text(text):
+    """Excel에 저장 가능한 형태로 텍스트 정제"""
+    if not isinstance(text, str):
+        return text
+    
+    # 줄바꿈 문자를 공백으로 변경
+    text = text.replace('\n', ' ')
+    # 탭 문자를 공백으로 변경
+    text = text.replace('\t', ' ')
+    # 연속된 공백을 하나의 공백으로 변경
+    text = ' '.join(text.split())
+    # 텍스트 길이 제한 (예: 32,767자)
+    text = text[:32000] if len(text) > 32000 else text
+    
+    return text
+
 def main():
     load_dotenv()
     
@@ -108,7 +124,12 @@ def main():
             print("수집된 데이터가 없습니다.")
             return
         
+        # 데이터프레임 생성
         df = pd.DataFrame(all_data)
+        
+        # 모든 컬럼의 데이터 정제
+        for column in df.columns:
+            df[column] = df[column].apply(clean_text)
         
         fields = [
             "ENTRPS",
@@ -133,6 +154,7 @@ def main():
         current_date = datetime.now().strftime("%Y%m%d")
         excel_file = f"api_data_{current_date}.xlsx"
         
+        # Excel 파일로 저장
         df.to_excel(excel_file, index=False, engine='openpyxl')
         print(f"데이터가 '{excel_file}' 파일로 저장되었습니다.")
         
