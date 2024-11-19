@@ -1,0 +1,45 @@
+name: API Data Collection
+
+on:
+  schedule:
+    - cron: '0 0 * * 1'  # 매주 월요일 09:00 KST (00:00 UTC)
+  workflow_dispatch:  # 수동 실행 옵션
+
+jobs:
+  collect-data:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+      
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.x'
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        
+    - name: Run data collection
+      env:
+        API_KEY: ${{ secrets.API_KEY }}
+      run: |
+        python src/collect_data.py
+        
+    - name: Upload Excel file
+      uses: actions/upload-artifact@v2
+      with:
+        name: api-data
+        path: api_data_*.xlsx
+        retention-days: 30  # 30일간 보관
+        
+    - name: Commit and push if there are changes
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add api_data_*.xlsx
+        git commit -m "Update API data $(date +'%Y-%m-%d')" || exit 0
+        git push
